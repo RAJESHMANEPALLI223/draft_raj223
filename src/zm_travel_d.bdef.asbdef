@@ -1,0 +1,142 @@
+managed;
+strict ( 2 );
+with draft;
+
+define behavior for ZM_TRAVEL_D //alias <alias_name>
+implementation in class zbp_m_travel_d unique
+persistent table /dmo/a_travel_d
+draft table zdm_travel_d
+lock master
+total etag LastChangedAt
+authorization master ( instance, global )
+etag master LocalLastChangedAt
+{
+  create ( precheck, authorization : global );
+  update ( precheck );
+  delete;
+  field ( numbering : managed, readonly ) TravelUUID;
+  field ( readonly ) TravelID, OverallStatus, TotalPrice, LastChangedAt, LocalCreatedAt, LocalCreatedBy,LocalLastChangedAt,LocalLastChangedBy;
+  association _Booking { create ( authorization : update ); with draft; }
+
+  action ( authorization : update ) acceptTravel result [1] $self;
+  action ( authorization : update ) rejectTravel result [1] $self;
+  action ( authorization : update ) deductDiscount parameter Za_Deduct_Discount result [1] $self;
+  internal action recalctotalprice;
+  determination settravelid on save { create; }
+  determination setstatusopen on modify { create;  }
+  determination calctotprice on modify { create; field BookingFee, CurrencyCode; }
+
+
+  side effects { field BookingFee affects field TotalPrice;
+                 field CurrencyCode affects field TotalPrice; }
+  field ( mandatory ) CustomerID;
+validation validatecust on save { create; field CustomerID; }
+
+draft action Resume with additional implementation;
+draft action Activate optimized  with additional implementation;
+draft action Edit with additional implementation;
+draft action Discard with additional implementation;
+draft determine action Prepare { validation
+validatecust;
+validation ZM_BOOKING_D~validcust ;
+}
+
+
+  mapping for /dmo/a_travel_d
+    {
+      AgencyID           = agency_id;
+      BeginDate          = begin_date;
+      BookingFee         = booking_fee;
+      CurrencyCode       = currency_code;
+      CustomerID         = customer_id;
+      Description        = description;
+      EndDate            = end_date;
+      LastChangedAt      = last_changed_at;
+      LocalCreatedAt     = local_created_at;
+      LocalCreatedBy     = local_created_by;
+      LocalLastChangedAt = local_last_changed_at;
+      LocalLastChangedBy = local_last_changed_by;
+      OverallStatus      = overall_status;
+      TotalPrice         = total_price;
+      TravelID           = travel_id;
+      TravelUUID         = travel_uuid;
+    }
+}
+
+define behavior for ZM_BOOKING_D //alias <alias_name>
+implementation in class zbp_m_booking_d unique
+persistent table /dmo/a_booking_d
+draft table zdm_booking_d
+lock dependent by _Travel
+authorization dependent by _Travel
+etag master LocalLastChangedAt
+{
+  update;
+  delete;
+  field ( numbering : managed, readonly ) BookingUUID;
+  field ( readonly ) TravelUUID, BookingID,BookingDate, LocalLastChangedAt;
+  association _Travel { with draft; }
+  association _BookingSupplement { create ( authorization : update );with draft; }
+
+  determination setbookingno on save { create; }
+  determination setbookingdate on save { create; }
+  determination calculatetotalprice on modify { create; field FlightPrice, CurrencyCode; }
+
+  side effects { field FlightPrice affects field _Travel.TotalPrice; }
+
+  field (mandatory) CustomerID;
+  validation validcust on save { create; field CustomerID ; }
+
+
+  mapping for /dmo/a_booking_d
+    {
+      AirlineID          = carrier_id;
+      BookingDate        = booking_date;
+      BookingID          = booking_id;
+      BookingStatus      = booking_status;
+      BookingUUID        = booking_uuid;
+      ConnectionID       = connection_id;
+      CurrencyCode       = currency_code;
+      CustomerID         = customer_id;
+      FlightDate         = flight_date;
+      FlightPrice        = flight_price;
+      LocalLastChangedAt = local_last_changed_at;
+      TravelUUID         = parent_uuid;
+    }
+}
+
+define behavior for ZM_BOOKINGSUPPLEMENT_D //alias <alias_name>
+implementation in class zbp_m_bookingsupp_d unique
+persistent table /dmo/a_bksuppl_d
+draft table zdm_booksupp_d
+lock dependent by _Travel
+authorization dependent by _Travel
+etag master LocalLastChangedAt
+{
+  update;
+  delete;
+  field ( numbering : managed, readonly ) BookSupplUUID;
+  field ( readonly ) BookingUUID, BookingSupplementID, LocalLastChangedAt;
+  field ( readonly ) TravelUUID;
+  association _Travel { with draft; }
+  association _Booking { with draft; }
+
+  determination setbookingsuppno on save { create; }
+  determination calctotalprice on modify { create; field CurrencyCode, BookSupplPrice; }
+
+  side effects { field BookSupplPrice affects field _Travel.TotalPrice; }
+
+
+
+  mapping for /dmo/a_bksuppl_d
+    {
+      BookSupplPrice      = price;
+      BookSupplUUID       = booksuppl_uuid;
+      BookingSupplementID = booking_supplement_id;
+      BookingUUID         = parent_uuid;
+      CurrencyCode        = currency_code;
+      LocalLastChangedAt  = local_last_changed_at;
+      SupplementID        = supplement_id;
+      TravelUUID          = root_uuid;
+    }
+}

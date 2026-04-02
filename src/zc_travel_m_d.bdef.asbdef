@@ -1,0 +1,37 @@
+projection;
+strict ( 2 );
+use draft;
+use side effects;
+define behavior for ZC_TRAVEL_M_D //alias <alias_name>
+{
+  use create;
+  use update;
+  use delete;
+  use action deductDiscount;
+  use action acceptTravel;
+  use association _Booking { create; with draft; }
+
+  use action Activate;
+  use action Discard;
+  use action Edit;
+  use action Prepare;
+  use action Resume;
+}
+
+define behavior for ZC_BOOKING_M_D //alias <alias_name>
+{
+  use update;
+  use delete;
+
+  use association _Travel { with draft; }
+  use association _BookingSupplement { create; with draft; }
+}
+
+define behavior for ZC_BOOKINGSUPPLEMENT_M_D //alias <alias_name>
+{
+  use update;
+  use delete;
+
+  use association _Travel { with draft; }
+  use association _Booking { with draft; }
+}
